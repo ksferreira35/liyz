@@ -3,6 +3,7 @@ package br.com.kaiky.todo_list.service;
 import br.com.kaiky.todo_list.dto.TaskRequestDTO;
 import br.com.kaiky.todo_list.dto.TaskResponseDTO;
 import br.com.kaiky.todo_list.dto.TaskStatusDTO;
+import br.com.kaiky.todo_list.entity.AppUser;
 import br.com.kaiky.todo_list.entity.Task;
 import br.com.kaiky.todo_list.exception.ResourceNotFoundException;
 import br.com.kaiky.todo_list.repository.TaskRepository;
@@ -34,6 +35,9 @@ class TaskServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    @Mock
+    private AuthenticatedUserService authenticatedUserService;
+
     @InjectMocks
     private TaskService taskService;
 
@@ -44,6 +48,7 @@ class TaskServiceTest {
                 "Practicing writing unit tests."
         );
         UUID taskId = UUID.randomUUID();
+        AppUser user = user(UUID.randomUUID());
         Task savedTask = task(
                 taskId,
                 request.title(),
@@ -51,6 +56,7 @@ class TaskServiceTest {
                 false
         );
 
+        when(authenticatedUserService.getCurrentUser()).thenReturn(user);
         when(taskRepository.save(any(Task.class))).thenReturn(savedTask);
 
         TaskResponseDTO response = taskService.createTask(request);
@@ -61,6 +67,7 @@ class TaskServiceTest {
         assertThat(taskCaptor.getValue().getTitle()).isEqualTo(request.title());
         assertThat(taskCaptor.getValue().getDescription()).isEqualTo(request.description());
         assertThat(taskCaptor.getValue().isCompleted()).isFalse();
+        assertThat(taskCaptor.getValue().getUser()).isSameAs(user);
         assertThat(response.id()).isEqualTo(taskId);
         assertThat(response.title()).isEqualTo(request.title());
         assertThat(response.description()).isEqualTo(request.description());
@@ -70,6 +77,7 @@ class TaskServiceTest {
     @Test
     void shouldReturnPageOfTaskResponseDTO() {
         Pageable pageable = PageRequest.of(0, 10);
+        UUID userId = UUID.randomUUID();
         Task entity = task(
                 UUID.randomUUID(),
                 "Learn Mockito",
@@ -78,7 +86,8 @@ class TaskServiceTest {
         );
         Page<Task> mockedPage = new PageImpl<>(List.of(entity), pageable, 1);
 
-        when(taskRepository.findAll(pageable)).thenReturn(mockedPage);
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findAllByUserId(userId, pageable)).thenReturn(mockedPage);
 
         Page<TaskResponseDTO> resultPage = taskService.getAllTasks(pageable);
 
@@ -96,6 +105,7 @@ class TaskServiceTest {
     @Test
     void shouldFindTaskByIdSuccessfully() {
         UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Task mockedTask = task(
                 taskId,
                 "Learn Mockito",
@@ -103,7 +113,8 @@ class TaskServiceTest {
                 false
         );
 
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(mockedTask));
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.of(mockedTask));
 
         TaskResponseDTO result = taskService.findTaskById(taskId);
 
@@ -116,8 +127,10 @@ class TaskServiceTest {
     @Test
     void shouldThrowWhenTaskIsNotFoundById() {
         UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
-        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> taskService.findTaskById(taskId))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -127,9 +140,11 @@ class TaskServiceTest {
     @Test
     void shouldUpdateTaskStatusSuccessfully() {
         UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Task mockedTask = task(taskId, "Learn Mockito", null, false);
 
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(mockedTask));
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.of(mockedTask));
 
         taskService.updateTaskStatus(taskId, new TaskStatusDTO(true));
 
@@ -140,21 +155,26 @@ class TaskServiceTest {
     @Test
     void shouldThrowWhenUpdatingMissingTask() {
         UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
-        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> taskService.updateTaskStatus(taskId, new TaskStatusDTO(true)))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(taskId.toString());
+        verify(taskRepository).findByIdAndUserId(taskId, userId);
         verifyNoMoreInteractions(taskRepository);
     }
 
     @Test
     void shouldDeleteTaskSuccessfully() {
         UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Task mockedTask = task(taskId, "Learn Mockito", null, false);
 
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(mockedTask));
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.of(mockedTask));
 
         taskService.deleteTaskById(taskId);
 
@@ -164,12 +184,15 @@ class TaskServiceTest {
     @Test
     void shouldThrowWhenDeletingMissingTask() {
         UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
-        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> taskService.deleteTaskById(taskId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Task");
+        verify(taskRepository).findByIdAndUserId(taskId, userId);
         verifyNoMoreInteractions(taskRepository);
     }
 
@@ -185,5 +208,13 @@ class TaskServiceTest {
         task.setDescription(description);
         task.setCompleted(completed);
         return task;
+    }
+
+    private static AppUser user(UUID id) {
+        AppUser user = new AppUser();
+        user.setId(id);
+        user.setUsername("kaiky");
+        user.setEmail("kaiky@example.com");
+        return user;
     }
 }

@@ -111,6 +111,15 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -163,7 +172,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Plugin adicionado para mapear dinamicamente a propriedade do JAR do Mockito -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -175,7 +183,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Plugin Surefire configurado de forma limpa e sem caminhos fixados -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
