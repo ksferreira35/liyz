@@ -84,7 +84,15 @@ public class TaskViewController {
             return "fragments/task-form-errors :: formErrors";
         }
 
-        TaskResponseDTO createdTask = taskService.createTask(dto);
+        TaskResponseDTO createdTask;
+        try {
+            createdTask = taskService.createTask(dto);
+        } catch (IllegalArgumentException exception) {
+            model.addAttribute("errorMessage", exception.getMessage());
+            response.setHeader("HX-Retarget", "#task-form-errors");
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "fragments/task-form-errors :: formErrors";
+        }
 
         model.addAttribute("task", createdTask);
 

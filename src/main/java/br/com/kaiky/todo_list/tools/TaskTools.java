@@ -1,5 +1,6 @@
 package br.com.kaiky.todo_list.tools;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -81,12 +82,32 @@ public class TaskTools {
             """
     )
     public TaskResponseDTO createTask(
-            @ToolParam(description = "Task title exactly as requested by the user.")
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
             String title,
-            @ToolParam(description = "Task description. Use an empty string when the user does not provide one.")
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
             String description
     ){
         return taskService.createTask(new TaskRequestDTO(title, description));
+    }
+
+    @Tool(
+            description = """
+                Creates a new task with an email reminder.
+                Use this when the user asks to be reminded, notified, alerted,
+                or gives a date/time for the task reminder.
+                The reminder will be sent to the authenticated user's email.
+                Never ask the user for their email address.
+            """
+    )
+    public TaskResponseDTO createTaskWithReminder(
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "Reminder date and time in ISO local date-time format, for example 2026-07-25T20:30:00.")
+            LocalDateTime dueAt
+    ){
+        return taskService.createTask(new TaskRequestDTO(title, description, dueAt, true));
     }
 
     @Tool(

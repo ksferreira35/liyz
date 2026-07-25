@@ -8,6 +8,12 @@
                 th:text="${error.defaultMessage}">
             Validation error
         </li>
+
+        <li
+                th:if="${errorMessage != null}"
+                th:text="${errorMessage}">
+            Validation error
+        </li>
     </ul>
 
 </div>

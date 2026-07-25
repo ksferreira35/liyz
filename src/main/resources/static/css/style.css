@@ -388,6 +388,35 @@ textarea.liyz-input {
     display: none;
 }
 
+.task-reminder-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: end;
+}
+
+.reminder-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 54px;
+    margin-bottom: 1rem;
+    padding: 0 16px;
+    border: 1px solid rgba(168, 85, 247, 0.42);
+    border-radius: 6px;
+    background: rgba(168, 85, 247, 0.12);
+    color: var(--liyz-text);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.reminder-toggle input {
+    width: 16px;
+    height: 16px;
+    accent-color: #a855f7;
+}
+
 .task-list-section {
     width: min(100%, 760px);
     max-width: 760px;
@@ -492,6 +521,23 @@ textarea.liyz-input {
 .task-empty-state p {
     margin: 0;
     color: var(--liyz-muted);
+}
+
+.task-reminder-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    color: var(--liyz-muted);
+    font-size: 0.86rem;
+}
+
+.task-reminder-meta small {
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(168, 85, 247, 0.14);
+    color: #d8b4fe;
+    font-weight: 900;
 }
 
 .task-card {
@@ -873,6 +919,15 @@ textarea.liyz-input {
     .task-create-card,
     .task-card {
         padding: 22px;
+    }
+
+    .task-reminder-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reminder-toggle {
+        width: 100%;
+        margin-bottom: 1rem;
     }
 
     .task-card-content {

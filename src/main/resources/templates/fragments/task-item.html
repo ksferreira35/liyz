@@ -22,10 +22,22 @@
                 Task title
             </h2>
 
-            <p th:text="${task.description}">
-                Task description
-            </p>
-        </div>
+	            <p th:text="${task.description}">
+	                Task description
+	            </p>
+
+	            <div
+	                    class="task-reminder-meta"
+	                    th:if="${task.dueAt != null}">
+	                <span th:text="${#temporals.format(task.dueAt, 'MMM dd, yyyy HH:mm')}">
+	                    Reminder date
+	                </span>
+
+	                <small th:text="${task.notificationStatus}">
+	                    PENDING
+	                </small>
+	            </div>
+	        </div>
 
         <span
                 class="task-status"

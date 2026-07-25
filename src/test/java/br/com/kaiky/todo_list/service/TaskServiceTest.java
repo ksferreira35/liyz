@@ -4,6 +4,7 @@ import br.com.kaiky.todo_list.dto.TaskRequestDTO;
 import br.com.kaiky.todo_list.dto.TaskResponseDTO;
 import br.com.kaiky.todo_list.dto.TaskStatusDTO;
 import br.com.kaiky.todo_list.entity.AppUser;
+import br.com.kaiky.todo_list.entity.NotificationStatus;
 import br.com.kaiky.todo_list.entity.Task;
 import br.com.kaiky.todo_list.exception.ResourceNotFoundException;
 import br.com.kaiky.todo_list.repository.TaskRepository;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -72,6 +74,70 @@ class TaskServiceTest {
         assertThat(response.title()).isEqualTo(request.title());
         assertThat(response.description()).isEqualTo(request.description());
         assertThat(response.completed()).isFalse();
+    }
+
+    @Test
+    void shouldCreateTaskWithPendingNotificationWhenReminderIsEnabled() {
+        LocalDateTime dueAt = LocalDateTime.now().plusHours(2);
+        TaskRequestDTO request = new TaskRequestDTO(
+                "Sleep",
+                "Sleep warm",
+                dueAt,
+                true
+        );
+        UUID taskId = UUID.randomUUID();
+        AppUser user = user(UUID.randomUUID());
+        Task savedTask = task(
+                taskId,
+                request.title(),
+                request.description(),
+                false
+        );
+        savedTask.setDueAt(dueAt);
+        savedTask.setNotificationStatus(NotificationStatus.PENDING);
+
+        when(authenticatedUserService.getCurrentUser()).thenReturn(user);
+        when(taskRepository.save(any(Task.class))).thenReturn(savedTask);
+
+        TaskResponseDTO response = taskService.createTask(request);
+
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+        verify(taskRepository).save(taskCaptor.capture());
+
+        assertThat(taskCaptor.getValue().getDueAt()).isEqualTo(dueAt);
+        assertThat(taskCaptor.getValue().getNotificationStatus()).isEqualTo(NotificationStatus.PENDING);
+        assertThat(response.dueAt()).isEqualTo(dueAt);
+        assertThat(response.notificationStatus()).isEqualTo(NotificationStatus.PENDING);
+    }
+
+    @Test
+    void shouldRejectTaskWhenDescriptionIsTooLong() {
+        String longDescription = "a".repeat(2001);
+        TaskRequestDTO request = new TaskRequestDTO(
+                "Learn Mockito",
+                longDescription
+        );
+
+        assertThatThrownBy(() -> taskService.createTask(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Task description must be at most 2000 characters");
+
+        verifyNoMoreInteractions(taskRepository);
+    }
+
+    @Test
+    void shouldRejectTaskWhenTitleIsTooLong() {
+        String longTitle = "a".repeat(121);
+        TaskRequestDTO request = new TaskRequestDTO(
+                longTitle,
+                "Practicing writing unit tests."
+        );
+
+        assertThatThrownBy(() -> taskService.createTask(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Task title must be at most 120 characters");
+
+        verifyNoMoreInteractions(taskRepository);
     }
 
     @Test
@@ -259,6 +325,47 @@ class TaskServiceTest {
         assertThat(response.id()).isEqualTo(mockedTask.getId());
         assertThat(response.title()).isEqualTo("Assistir TV");
         verify(taskRepository).delete(mockedTask);
+    }
+
+    @Test
+    void shouldFindDueNotifications() {
+        LocalDateTime now = LocalDateTime.now();
+        Task dueTask = task(UUID.randomUUID(), "Study", null, false);
+        dueTask.setDueAt(now.minusMinutes(1));
+        dueTask.setNotificationStatus(NotificationStatus.PENDING);
+        Pageable expectedPageable = PageRequest.of(0, 100);
+
+        when(taskRepository.findDueNotifications(now, 3, expectedPageable))
+                .thenReturn(List.of(dueTask));
+
+        List<TaskResponseDTO> result = taskService.findDueNotifications(now, 100, 3);
+
+        assertThat(result)
+                .singleElement()
+                .satisfies(response -> {
+                    assertThat(response.id()).isEqualTo(dueTask.getId());
+                    assertThat(response.notificationStatus()).isEqualTo(NotificationStatus.PENDING);
+                });
+    }
+
+    @Test
+    void shouldMarkNotificationAsQueued() {
+        UUID taskId = UUID.randomUUID();
+        AppUser user = user(UUID.randomUUID());
+        Task task = task(taskId, "Study", null, false);
+        task.setUser(user);
+        task.setNotificationStatus(NotificationStatus.PENDING);
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(task)).thenReturn(task);
+
+        var message = taskService.markNotificationAsQueued(taskId);
+
+        assertThat(task.getNotificationStatus()).isEqualTo(NotificationStatus.QUEUED);
+        assertThat(task.getNotificationQueuedAt()).isNotNull();
+        assertThat(message.taskId()).isEqualTo(taskId);
+        assertThat(message.userId()).isEqualTo(user.getId());
+        verify(taskRepository).save(task);
     }
 
     @Test
