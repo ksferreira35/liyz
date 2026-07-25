@@ -1,5 +1,6 @@
 package br.com.kaiky.todo_list.service;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -52,19 +53,41 @@ public class TaskService {
     public TaskResponseDTO findTaskById(UUID id) {
         UUID userId = authenticatedUserService.getCurrentUserId();
         Task task = taskRepository.findByIdAndUserId(id, userId)
-                                  .orElseThrow(() -> new ResourceNotFoundException("Task with id: "+ id + "Not Found"));
+                                  .orElseThrow(() -> new ResourceNotFoundException("Task with id: " + id + " Not Found"));
         
         return convertToResponseDTO(task);
     }
 
-    public void updateTaskStatus(UUID id, TaskStatusDTO dto) {
+    public List<TaskResponseDTO> findTasksByTitle(String title) {
+        String normalizedTitle = normalizeTitle(title);
+        UUID userId = authenticatedUserService.getCurrentUserId();
+
+        return taskRepository
+                .findByUser_IdAndTitleContainingIgnoreCase(userId, normalizedTitle)
+                .stream()
+                .map(this::convertToResponseDTO)
+                .toList();
+    }
+
+    public TaskResponseDTO updateTaskStatus(UUID id, TaskStatusDTO dto) {
         UUID userId = authenticatedUserService.getCurrentUserId();
         Task task = taskRepository.findByIdAndUserId(id, userId)
-                                  .orElseThrow(() -> new ResourceNotFoundException("Task with id: "+ id + "Not Found"));
+                                  .orElseThrow(() -> new ResourceNotFoundException("Task with id: " + id + " Not Found"));
         
         task.setCompleted(dto.completed());
         
-        taskRepository.save(task);
+        Task savedTask = taskRepository.save(task);
+
+        return convertToResponseDTO(savedTask);
+    }
+
+    public TaskResponseDTO updateTaskStatusByTitle(String title, TaskStatusDTO dto) {
+        Task task = findSingleTaskByTitleForCurrentUser(title);
+
+        task.setCompleted(dto.completed());
+        Task savedTask = taskRepository.save(task);
+
+        return convertToResponseDTO(savedTask);
     }
     
     public void deleteTaskById(UUID id) {
@@ -75,6 +98,15 @@ public class TaskService {
         taskRepository.delete(task);                        
     }
 
+    public TaskResponseDTO deleteTaskByTitle(String title) {
+        Task task = findSingleTaskByTitleForCurrentUser(title);
+        TaskResponseDTO response = convertToResponseDTO(task);
+
+        taskRepository.delete(task);
+
+        return response;
+    }
+
     public TaskResponseDTO convertToResponseDTO(Task task) {
         return new TaskResponseDTO(
             task.getId(),
@@ -83,5 +115,43 @@ public class TaskService {
             task.isCompleted()
         );
 
+    }
+
+    private Task findSingleTaskByTitleForCurrentUser(String title) {
+        String normalizedTitle = normalizeTitle(title);
+        UUID userId = authenticatedUserService.getCurrentUserId();
+        List<Task> exactMatches = taskRepository.findByUser_IdAndTitleIgnoreCase(userId, normalizedTitle);
+
+        if (exactMatches.size() == 1) {
+            return exactMatches.getFirst();
+        }
+
+        if (exactMatches.size() > 1) {
+            throw new IllegalArgumentException(
+                    "More than one task was found with title: " + normalizedTitle + ". Ask the user to clarify."
+            );
+        }
+
+        List<Task> partialMatches = taskRepository.findByUser_IdAndTitleContainingIgnoreCase(userId, normalizedTitle);
+
+        if (partialMatches.size() == 1) {
+            return partialMatches.getFirst();
+        }
+
+        if (partialMatches.isEmpty()) {
+            throw new ResourceNotFoundException("Task with title: " + normalizedTitle + " not found");
+        }
+
+        throw new IllegalArgumentException(
+                "More than one task matched: " + normalizedTitle + ". Ask the user to clarify."
+        );
+    }
+
+    private String normalizeTitle(String title) {
+        if (title == null || title.trim().isBlank()) {
+            throw new IllegalArgumentException("Task title is required");
+        }
+
+        return title.trim();
     }
 }

@@ -1,5 +1,6 @@
 package br.com.kaiky.todo_list.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,4 +28,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
             @Param("taskId") UUID taskId,
             @Param("userId") UUID userId
     );
+
+    List<Task> findByUser_IdAndTitleIgnoreCase(UUID userId, String title);
+
+    List<Task> findByUser_IdAndTitleContainingIgnoreCase(UUID userId, String title);
 }

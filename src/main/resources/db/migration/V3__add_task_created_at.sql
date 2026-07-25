@@ -1,0 +1,9 @@
+ALTER TABLE task
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP(6);
+
+UPDATE task
+SET created_at = CURRENT_TIMESTAMP
+WHERE created_at IS NULL;
+
+ALTER TABLE task
+    ALTER COLUMN created_at SET NOT NULL;

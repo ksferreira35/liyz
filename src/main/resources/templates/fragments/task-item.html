@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<body>
+
+<article
+        th:fragment="taskItem(task)"
+        class="liyz-card task-card"
+        th:id="|task-${task.id}|">
+
+    <div class="task-card-content">
+        <span
+                class="task-dot"
+                th:classappend="${task.completed} ? ' completed' : ' pending'">
+        </span>
+
+        <div class="task-copy">
+            <h2
+                    th:classappend="${task.completed} ? ' completed' : ''"
+                    th:text="${task.title}">
+                Task title
+            </h2>
+
+            <p th:text="${task.description}">
+                Task description
+            </p>
+        </div>
+
+        <span
+                class="task-status"
+                th:classappend="${task.completed} ? ' completed' : ' pending'"
+                th:text="${task.completed} ? 'Completed' : 'Pending'">
+            Pending
+        </span>
+    </div>
+
+    <div class="task-actions">
+        <form
+                th:attr="hx-patch=@{/tasks/{id}(id=${task.id})}"
+                hx-target="closest article"
+                hx-swap="outerHTML">
+            <input
+                    type="hidden"
+                    th:name="${_csrf.parameterName}"
+                    th:value="${_csrf.token}">
+
+            <input
+                    type="hidden"
+                    name="completed"
+                    th:value="${!task.completed}">
+
+            <button
+                    type="submit"
+                    class="liyz-button liyz-button-ghost"
+                    th:text="${task.completed}
+                    ? 'Mark as pending'
+                    : 'Mark as completed'">
+                Mark as completed
+            </button>
+        </form>
+
+        <button
+                type="button"
+                class="liyz-button liyz-button-danger"
+                th:attr="hx-delete=@{/tasks/{id}(id=${task.id})}"
+                hx-target="closest article"
+                hx-swap="delete"
+                hx-confirm="Delete this task?">
+            Delete
+        </button>
+    </div>
+</article>
+
+</body>
+</html>

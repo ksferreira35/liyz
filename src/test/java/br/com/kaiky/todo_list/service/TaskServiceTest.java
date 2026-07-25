@@ -125,6 +125,32 @@ class TaskServiceTest {
     }
 
     @Test
+    void shouldFindTasksByTitleForCurrentUser() {
+        UUID userId = UUID.randomUUID();
+        Task mockedTask = task(
+                UUID.randomUUID(),
+                "Assistir TV",
+                "Relax after work.",
+                false
+        );
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByUser_IdAndTitleContainingIgnoreCase(userId, "TV"))
+                .thenReturn(List.of(mockedTask));
+
+        List<TaskResponseDTO> result = taskService.findTasksByTitle(" TV ");
+
+        assertThat(result)
+                .singleElement()
+                .satisfies(response -> {
+                    assertThat(response.id()).isEqualTo(mockedTask.getId());
+                    assertThat(response.title()).isEqualTo("Assistir TV");
+                    assertThat(response.description()).isEqualTo("Relax after work.");
+                    assertThat(response.completed()).isFalse();
+                });
+    }
+
+    @Test
     void shouldThrowWhenTaskIsNotFoundById() {
         UUID taskId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -145,11 +171,49 @@ class TaskServiceTest {
 
         when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
         when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.of(mockedTask));
+        when(taskRepository.save(mockedTask)).thenReturn(mockedTask);
 
         taskService.updateTaskStatus(taskId, new TaskStatusDTO(true));
 
         assertThat(mockedTask.isCompleted()).isTrue();
         verify(taskRepository).save(mockedTask);
+    }
+
+    @Test
+    void shouldUpdateTaskStatusByTitleSuccessfully() {
+        UUID userId = UUID.randomUUID();
+        Task mockedTask = task(UUID.randomUUID(), "Assistir TV", null, false);
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByUser_IdAndTitleIgnoreCase(userId, "Assistir TV"))
+                .thenReturn(List.of(mockedTask));
+        when(taskRepository.save(mockedTask)).thenReturn(mockedTask);
+
+        TaskResponseDTO response = taskService.updateTaskStatusByTitle(
+                " Assistir TV ",
+                new TaskStatusDTO(true)
+        );
+
+        assertThat(mockedTask.isCompleted()).isTrue();
+        assertThat(response.completed()).isTrue();
+        verify(taskRepository).save(mockedTask);
+    }
+
+    @Test
+    void shouldThrowWhenMoreThanOneTaskMatchesTitle() {
+        UUID userId = UUID.randomUUID();
+        Task firstTask = task(UUID.randomUUID(), "Study Java", null, false);
+        Task secondTask = task(UUID.randomUUID(), "Study Java docs", null, false);
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByUser_IdAndTitleIgnoreCase(userId, "Study"))
+                .thenReturn(List.of());
+        when(taskRepository.findByUser_IdAndTitleContainingIgnoreCase(userId, "Study"))
+                .thenReturn(List.of(firstTask, secondTask));
+
+        assertThatThrownBy(() -> taskService.updateTaskStatusByTitle("Study", new TaskStatusDTO(true)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("More than one task matched");
     }
 
     @Test
@@ -178,6 +242,22 @@ class TaskServiceTest {
 
         taskService.deleteTaskById(taskId);
 
+        verify(taskRepository).delete(mockedTask);
+    }
+
+    @Test
+    void shouldDeleteTaskByTitleSuccessfully() {
+        UUID userId = UUID.randomUUID();
+        Task mockedTask = task(UUID.randomUUID(), "Assistir TV", null, false);
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByUser_IdAndTitleIgnoreCase(userId, "Assistir TV"))
+                .thenReturn(List.of(mockedTask));
+
+        TaskResponseDTO response = taskService.deleteTaskByTitle("Assistir TV");
+
+        assertThat(response.id()).isEqualTo(mockedTask.getId());
+        assertThat(response.title()).isEqualTo("Assistir TV");
         verify(taskRepository).delete(mockedTask);
     }
 

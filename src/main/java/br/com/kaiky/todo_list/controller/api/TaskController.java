@@ -1,4 +1,4 @@
-package br.com.kaiky.todo_list.controller;
+package br.com.kaiky.todo_list.controller.api;
 
 import java.util.UUID;
 
