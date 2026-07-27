@@ -215,7 +215,7 @@ mvn spring-boot:run
 - [ ] Vault-based secret management
 - [ ] CI/CD pipeline
 - [ ] Production observability
-- [ ] React or enhanced HTMX frontend iteration
+- [ ] Enhanced HTMX frontend experience
 
 > The roadmap represents the planned core features. The project will continue to evolve with new improvements after these milestones are completed.
 
