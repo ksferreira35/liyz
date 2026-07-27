@@ -3,8 +3,10 @@ package br.com.kaiky.todo_list.service;
 import br.com.kaiky.todo_list.dto.TaskRequestDTO;
 import br.com.kaiky.todo_list.dto.TaskResponseDTO;
 import br.com.kaiky.todo_list.dto.TaskStatusDTO;
+import br.com.kaiky.todo_list.dto.TaskUpdateDTO;
 import br.com.kaiky.todo_list.entity.AppUser;
 import br.com.kaiky.todo_list.entity.NotificationStatus;
+import br.com.kaiky.todo_list.entity.RecurrenceType;
 import br.com.kaiky.todo_list.entity.Task;
 import br.com.kaiky.todo_list.exception.ResourceNotFoundException;
 import br.com.kaiky.todo_list.repository.TaskRepository;
@@ -27,6 +29,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -74,6 +77,7 @@ class TaskServiceTest {
         assertThat(response.title()).isEqualTo(request.title());
         assertThat(response.description()).isEqualTo(request.description());
         assertThat(response.completed()).isFalse();
+        assertThat(response.recurrenceType()).isEqualTo(RecurrenceType.NONE);
     }
 
     @Test
@@ -108,6 +112,31 @@ class TaskServiceTest {
         assertThat(taskCaptor.getValue().getNotificationStatus()).isEqualTo(NotificationStatus.PENDING);
         assertThat(response.dueAt()).isEqualTo(dueAt);
         assertThat(response.notificationStatus()).isEqualTo(NotificationStatus.PENDING);
+    }
+
+    @Test
+    void shouldCreateRecurringTask() {
+        TaskRequestDTO request = new TaskRequestDTO(
+                "Drink water",
+                "Hydration routine.",
+                null,
+                false,
+                RecurrenceType.DAILY
+        );
+        AppUser user = user(UUID.randomUUID());
+        Task savedTask = task(UUID.randomUUID(), request.title(), request.description(), false);
+        savedTask.setRecurrenceType(RecurrenceType.DAILY);
+
+        when(authenticatedUserService.getCurrentUser()).thenReturn(user);
+        when(taskRepository.save(any(Task.class))).thenReturn(savedTask);
+
+        TaskResponseDTO response = taskService.createTask(request);
+
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+        verify(taskRepository).save(taskCaptor.capture());
+
+        assertThat(taskCaptor.getValue().getRecurrenceType()).isEqualTo(RecurrenceType.DAILY);
+        assertThat(response.recurrenceType()).isEqualTo(RecurrenceType.DAILY);
     }
 
     @Test
@@ -246,6 +275,65 @@ class TaskServiceTest {
     }
 
     @Test
+    void shouldCreateNextOccurrenceWhenCompletingRecurringTask() {
+        UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        AppUser user = user(userId);
+        LocalDateTime dueAt = LocalDateTime.now().plusHours(1);
+        Task recurringTask = task(taskId, "Take medicine", "Daily medicine.", false);
+        recurringTask.setUser(user);
+        recurringTask.setDueAt(dueAt);
+        recurringTask.setNotificationStatus(NotificationStatus.PENDING);
+        recurringTask.setRecurrenceType(RecurrenceType.DAILY);
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.of(recurringTask));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        taskService.updateTaskStatus(taskId, new TaskStatusDTO(true));
+
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+        verify(taskRepository, org.mockito.Mockito.times(2)).save(taskCaptor.capture());
+
+        Task nextTask = taskCaptor.getAllValues().get(1);
+        assertThat(nextTask.getTitle()).isEqualTo("Take medicine");
+        assertThat(nextTask.getDueAt()).isEqualTo(dueAt.plusDays(1));
+        assertThat(nextTask.getNotificationStatus()).isEqualTo(NotificationStatus.PENDING);
+        assertThat(nextTask.getRecurrenceType()).isEqualTo(RecurrenceType.DAILY);
+        assertThat(nextTask.isCompleted()).isFalse();
+    }
+
+    @Test
+    void shouldUpdateTaskDetailsSuccessfully() {
+        UUID taskId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        LocalDateTime dueAt = LocalDateTime.now().plusDays(1);
+        Task mockedTask = task(taskId, "Old title", "Old description", false);
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByIdAndUserId(taskId, userId)).thenReturn(Optional.of(mockedTask));
+        when(taskRepository.save(mockedTask)).thenReturn(mockedTask);
+
+        TaskResponseDTO response = taskService.updateTask(
+                taskId,
+                new TaskUpdateDTO(
+                        "New title",
+                        "New description",
+                        dueAt,
+                        true,
+                        RecurrenceType.WEEKLY
+                )
+        );
+
+        assertThat(response.title()).isEqualTo("New title");
+        assertThat(response.description()).isEqualTo("New description");
+        assertThat(response.dueAt()).isEqualTo(dueAt);
+        assertThat(response.notificationStatus()).isEqualTo(NotificationStatus.PENDING);
+        assertThat(response.recurrenceType()).isEqualTo(RecurrenceType.WEEKLY);
+        verify(taskRepository).save(mockedTask);
+    }
+
+    @Test
     void shouldUpdateTaskStatusByTitleSuccessfully() {
         UUID userId = UUID.randomUUID();
         Task mockedTask = task(UUID.randomUUID(), "Assistir TV", null, false);
@@ -345,6 +433,57 @@ class TaskServiceTest {
                 .satisfies(response -> {
                     assertThat(response.id()).isEqualTo(dueTask.getId());
                     assertThat(response.notificationStatus()).isEqualTo(NotificationStatus.PENDING);
+                });
+    }
+
+    @Test
+    void shouldReturnTodayScheduleForCurrentUser() {
+        UUID userId = UUID.randomUUID();
+        LocalDateTime dueAt = LocalDateTime.now().withHour(14).withMinute(0);
+        Task task = task(UUID.randomUUID(), "Review dashboard", "Check layout polish.", false);
+        task.setDueAt(dueAt);
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByUser_IdAndDueAtBetweenOrderByDueAtAsc(
+                eq(userId),
+                any(LocalDateTime.class),
+                any(LocalDateTime.class)
+        )).thenReturn(List.of(task));
+
+        var sections = taskService.getSchedule("today");
+
+        assertThat(sections)
+                .singleElement()
+                .satisfies(section -> {
+                    assertThat(section.label()).isEqualTo("Today");
+                    assertThat(section.tasks())
+                            .singleElement()
+                            .satisfies(response -> {
+                                assertThat(response.title()).isEqualTo("Review dashboard");
+                                assertThat(response.dueAt()).isEqualTo(dueAt);
+                            });
+                });
+    }
+
+    @Test
+    void shouldReturnNoDateScheduleForCurrentUser() {
+        UUID userId = UUID.randomUUID();
+        Task task = task(UUID.randomUUID(), "Clean backlog", null, false);
+
+        when(authenticatedUserService.getCurrentUserId()).thenReturn(userId);
+        when(taskRepository.findByUser_IdAndDueAtIsNullOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(task));
+
+        var sections = taskService.getSchedule("no-date");
+
+        assertThat(sections)
+                .singleElement()
+                .satisfies(section -> {
+                    assertThat(section.label()).isEqualTo("No date");
+                    assertThat(section.tasks())
+                            .singleElement()
+                            .extracting("title")
+                            .isEqualTo("Clean backlog");
                 });
     }
 

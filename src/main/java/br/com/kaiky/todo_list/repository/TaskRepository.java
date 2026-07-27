@@ -1,5 +1,6 @@
 package br.com.kaiky.todo_list.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +36,24 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     List<Task> findByUser_IdAndTitleIgnoreCase(UUID userId, String title);
 
     List<Task> findByUser_IdAndTitleContainingIgnoreCase(UUID userId, String title);
+
+    List<Task> findByUser_IdAndNotificationStatusInOrderByDueAtAsc(
+            UUID userId,
+            List<NotificationStatus> notificationStatuses
+    );
+
+    List<Task> findByUser_IdAndDueAtBetweenOrderByDueAtAsc(
+            UUID userId,
+            LocalDateTime start,
+            LocalDateTime end
+    );
+
+    List<Task> findByUser_IdAndDueAtGreaterThanEqualOrderByDueAtAsc(
+            UUID userId,
+            LocalDateTime start
+    );
+
+    List<Task> findByUser_IdAndDueAtIsNullOrderByCreatedAtDesc(UUID userId);
 
     @Query("""
             SELECT task

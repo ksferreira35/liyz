@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+
+    <title>Schedule | Liyz Todo</title>
+
+    <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+            rel="stylesheet">
+    <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+            rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" th:href="@{/img/logo.svg}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <script
+            src="https://unpkg.com/htmx.org@2.0.8"
+            defer>
+    </script>
+    <script>
+        document.addEventListener('htmx:configRequest', function (event) {
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const header = document.querySelector('meta[name="_csrf_header"]').content;
+            event.detail.headers[header] = token;
+        });
+    </script>
+</head>
+
+<body class="liyz-body">
+
+<div class="app-shell app-shell-single">
+    <aside class="app-sidebar">
+        <div>
+            <a class="app-brand" th:href="@{/tasks}">
+                <img
+                        class="brand-logo"
+                        th:src="@{/img/logo.svg}"
+                        alt="Liyz Todo logo">
+
+                <span>
+                    <strong>Liyz Todo</strong>
+                    <small>AI task manager</small>
+                </span>
+            </a>
+
+            <nav class="app-nav" aria-label="Main navigation">
+                <a class="app-nav-item" th:href="@{/tasks}">
+                    <i class="bi bi-check2-square nav-icon" aria-hidden="true"></i>
+                    My Tasks
+                </a>
+
+                <a class="app-nav-item active" th:href="@{/schedule}">
+                    <i class="bi bi-calendar2-week nav-icon" aria-hidden="true"></i>
+                    Schedule
+                </a>
+
+                <a class="app-nav-item" th:href="@{/notifications}">
+                    <i class="bi bi-bell nav-icon" aria-hidden="true"></i>
+                    Notifications
+                </a>
+            </nav>
+        </div>
+
+        <form th:action="@{/logout}" method="post">
+            <input
+                    type="hidden"
+                    th:name="${_csrf.parameterName}"
+                    th:value="${_csrf.token}">
+
+            <button type="submit" class="logout-button">
+                <span class="logout-icon" aria-hidden="true">
+                    <i class="bi bi-box-arrow-right"></i>
+                </span>
+                Logout
+            </button>
+        </form>
+    </aside>
+
+    <main class="task-workspace schedule-workspace">
+        <header class="mobile-header">
+            <a class="mobile-brand" th:href="@{/tasks}">
+                <img
+                        class="brand-logo brand-logo-sm"
+                        th:src="@{/img/logo.svg}"
+                        alt="Liyz Todo logo">
+                Liyz Todo
+            </a>
+
+            <form th:action="@{/logout}" method="post">
+                <input
+                        type="hidden"
+                        th:name="${_csrf.parameterName}"
+                        th:value="${_csrf.token}">
+
+                <button type="submit" class="icon-button" aria-label="Logout">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                </button>
+            </form>
+        </header>
+
+        <section class="tasks-main schedule-main">
+            <div class="page-heading">
+                <h1>Schedule</h1>
+                <p>See what is due now, what is coming next, and what still needs a date.</p>
+            </div>
+
+            <section
+                    id="schedule-list-section"
+                    class="schedule-list-section"
+                    th:fragment="scheduleList">
+                <div class="notification-tabs schedule-tabs" aria-label="Schedule filters">
+                    <button
+                            type="button"
+                            th:classappend="${filter == 'today'} ? ' active' : ''"
+                            hx-get="/schedule/fragments/list?filter=today"
+                            hx-target="#schedule-list-section"
+                            hx-swap="outerHTML">
+                        Today
+                    </button>
+
+                    <button
+                            type="button"
+                            th:classappend="${filter == 'tomorrow'} ? ' active' : ''"
+                            hx-get="/schedule/fragments/list?filter=tomorrow"
+                            hx-target="#schedule-list-section"
+                            hx-swap="outerHTML">
+                        Tomorrow
+                    </button>
+
+                    <button
+                            type="button"
+                            th:classappend="${filter == 'week'} ? ' active' : ''"
+                            hx-get="/schedule/fragments/list?filter=week"
+                            hx-target="#schedule-list-section"
+                            hx-swap="outerHTML">
+                        Next 7 days
+                    </button>
+
+                    <button
+                            type="button"
+                            th:classappend="${filter == 'later'} ? ' active' : ''"
+                            hx-get="/schedule/fragments/list?filter=later"
+                            hx-target="#schedule-list-section"
+                            hx-swap="outerHTML">
+                        Later
+                    </button>
+
+                    <button
+                            type="button"
+                            th:classappend="${filter == 'no-date'} ? ' active' : ''"
+                            hx-get="/schedule/fragments/list?filter=no-date"
+                            hx-target="#schedule-list-section"
+                            hx-swap="outerHTML">
+                        No date
+                    </button>
+                </div>
+
+                <div class="notification-summary schedule-summary">
+                    <span th:text="${filterLabel}">Today</span>
+                    <strong th:text="|${totalTasks} total|">0 total</strong>
+                </div>
+
+                <div class="schedule-timeline">
+                    <article
+                            class="liyz-card notification-card"
+                            th:if="${totalTasks == 0}">
+                        <div>
+                            <span class="notification-status-dot queued"></span>
+                        </div>
+
+                        <div class="notification-content">
+                            <div class="notification-card-header">
+                                <h2>No tasks here</h2>
+                            </div>
+
+                            <p>This schedule view is clear for now.</p>
+                        </div>
+                    </article>
+
+                    <section
+                            class="schedule-section"
+                            th:each="section : ${sections}"
+                            th:if="${!section.tasks().isEmpty()}">
+                        <div class="schedule-section-title">
+                            <span th:text="${section.label()}">Today</span>
+                        </div>
+
+                        <article
+                                class="liyz-card schedule-card"
+                                th:each="task : ${section.tasks()}"
+                                th:classappend="${task.completed()} ? ' completed' : ''">
+                            <div class="schedule-marker">
+                                <span th:classappend="${task.completed()} ? ' completed' : ''"></span>
+                            </div>
+
+                            <div class="schedule-card-body">
+                                <div class="schedule-card-header">
+                                    <form
+                                            th:attr="hx-patch=@{/schedule/{id}/status(id=${task.id()}, filter=${filter})}"
+                                            hx-target="#schedule-list-section"
+                                            hx-swap="outerHTML">
+                                        <input
+                                                type="hidden"
+                                                name="completed"
+                                                th:value="${!task.completed()}">
+
+                                        <button
+                                                type="submit"
+                                                class="schedule-check"
+                                                th:classappend="${task.completed()} ? ' checked' : ''"
+                                                th:aria-label="${task.completed()} ? 'Mark as pending' : 'Mark as completed'">
+                                            <span></span>
+                                        </button>
+                                    </form>
+
+                                    <div>
+                                        <h2 th:text="${task.title()}">Task title</h2>
+
+                                        <p
+                                                th:if="${task.description() != null and !task.description().isBlank()}"
+                                                th:text="${task.description()}">
+                                            Task description
+                                        </p>
+                                    </div>
+
+                                    <small
+                                            class="task-status"
+                                            th:classappend="${task.completed()} ? ' completed' : ' pending'"
+                                            th:text="${task.completed()} ? 'Completed' : 'Pending'">
+                                        Pending
+                                    </small>
+                                </div>
+
+                                <div class="schedule-meta">
+                                    <span
+                                            th:if="${task.dueAt() != null}"
+                                            th:text="${#temporals.format(task.dueAt(), 'MMM dd, yyyy HH:mm')}">
+                                        Jul 25, 2026 09:00
+                                    </span>
+
+                                    <span
+                                            th:if="${task.notificationStatus() != null and task.notificationStatus().name() != 'NONE'}"
+                                            th:text="|Reminder ${#strings.toLowerCase(task.notificationStatus().name())}|">
+                                        Reminder pending
+                                    </span>
+
+                                    <span
+                                            th:if="${task.recurrenceType() != null and task.recurrenceType().name() != 'NONE'}"
+                                            th:text="|Repeats ${#strings.toLowerCase(task.recurrenceType().name())}|">
+                                        Repeats daily
+                                    </span>
+                                </div>
+
+                                <div class="task-actions schedule-actions">
+                                    <a
+                                            class="liyz-button liyz-button-ghost"
+                                            th:href="@{/tasks}">
+                                        Edit in tasks
+                                    </a>
+
+                                    <button
+                                            type="button"
+                                            class="liyz-button liyz-button-danger"
+                                            th:if="${task.notificationStatus() != null and (task.notificationStatus().name() == 'PENDING' or task.notificationStatus().name() == 'QUEUED' or task.notificationStatus().name() == 'FAILED')}"
+                                            th:attr="hx-patch=@{/schedule/{id}/disable-reminder(id=${task.id()}, filter=${filter})}"
+                                            hx-target="#schedule-list-section"
+                                            hx-swap="outerHTML">
+                                        Disable reminder
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    </section>
+                </div>
+            </section>
+
+            <footer class="app-footer">
+                <div class="footer-grid">
+                    <div>
+                        <h2>Liyz Todo</h2>
+                        <p>AI task management for focused work.</p>
+                    </div>
+
+                    <nav aria-label="Footer product navigation">
+                        <strong>Product</strong>
+                        <a th:href="@{/tasks}">My Tasks</a>
+                        <a th:href="@{/schedule}">Schedule</a>
+                        <a th:href="@{/notifications}">Notifications</a>
+                    </nav>
+
+                    <nav aria-label="Footer resources navigation">
+                        <strong>Resources</strong>
+                        <a th:href="@{/swagger-ui.html}">API docs</a>
+                        <a th:href="@{/v3/api-docs}">OpenAPI spec</a>
+                    </nav>
+
+                    <div>
+                        <strong>Stack</strong>
+                        <span>Spring Boot</span>
+                        <span>Spring AI</span>
+                        <span>HTMX</span>
+                        <span>RabbitMQ</span>
+                    </div>
+                </div>
+
+                <div class="footer-bottom">
+                    <span>Built by Kaiky Ferreira.</span>
+                    <span>© 2026 Liyz Todo. All rights reserved.</span>
+                </div>
+            </footer>
+        </section>
+    </main>
+</div>
+
+</body>
+</html>

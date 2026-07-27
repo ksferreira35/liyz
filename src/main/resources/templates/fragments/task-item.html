@@ -37,6 +37,14 @@
 	                    PENDING
 	                </small>
 	            </div>
+
+	            <div
+	                    class="task-recurrence-meta"
+	                    th:if="${task.recurrenceType != null and task.recurrenceType.name() != 'NONE'}">
+	                <span th:text="|Repeats ${#strings.toLowerCase(task.recurrenceType.name())}|">
+	                    Repeats daily
+	                </span>
+	            </div>
 	        </div>
 
         <span
@@ -74,6 +82,15 @@
 
         <button
                 type="button"
+                class="liyz-button liyz-button-ghost"
+                th:attr="hx-get=@{/tasks/{id}/edit(id=${task.id})}"
+                hx-target="closest article"
+                hx-swap="outerHTML">
+            Edit
+        </button>
+
+        <button
+                type="button"
                 class="liyz-button liyz-button-danger"
                 th:attr="hx-delete=@{/tasks/{id}(id=${task.id})}"
                 hx-target="closest article"
@@ -82,6 +99,96 @@
             Delete
         </button>
     </div>
+</article>
+
+<article
+        th:fragment="taskEditForm(task, taskUpdate)"
+        class="liyz-card task-card task-edit-card"
+        th:id="|task-${task.id}|">
+    <form
+            th:object="${taskUpdate}"
+            th:attr="hx-patch=@{/tasks/{id}/details(id=${task.id})}"
+            hx-target="closest article"
+            hx-swap="outerHTML">
+        <input
+                type="hidden"
+                th:name="${_csrf.parameterName}"
+                th:value="${_csrf.token}">
+
+        <div
+                th:id="|task-edit-errors-${task.id}|"
+                class="task-form-errors">
+        </div>
+
+        <div class="liyz-field">
+            <label th:for="|edit-title-${task.id}|">Task title</label>
+
+            <input
+                    th:id="|edit-title-${task.id}|"
+                    type="text"
+                    th:field="*{title}"
+                    class="form-control liyz-input">
+        </div>
+
+        <div class="liyz-field">
+            <label th:for="|edit-description-${task.id}|">Description</label>
+
+            <textarea
+                    th:id="|edit-description-${task.id}|"
+                    th:field="*{description}"
+                    class="form-control liyz-input"
+                    rows="4"></textarea>
+        </div>
+
+        <div class="task-reminder-grid">
+            <div class="liyz-field">
+                <label th:for="|edit-dueAt-${task.id}|">Reminder time</label>
+
+                <input
+                        th:id="|edit-dueAt-${task.id}|"
+                        type="datetime-local"
+                        th:field="*{dueAt}"
+                        class="form-control liyz-input">
+            </div>
+
+            <label class="reminder-toggle" th:for="|edit-notification-${task.id}|">
+                <input
+                        th:id="|edit-notification-${task.id}|"
+                        type="checkbox"
+                        th:field="*{notificationEnabled}">
+                <span>Notify me</span>
+            </label>
+        </div>
+
+        <div class="liyz-field">
+            <label th:for="|edit-recurrence-${task.id}|">Repeat</label>
+
+            <select
+                    th:id="|edit-recurrence-${task.id}|"
+                    th:field="*{recurrenceType}"
+                    class="form-select liyz-input">
+                <option value="NONE">Does not repeat</option>
+                <option value="DAILY">Daily</option>
+                <option value="WEEKLY">Weekly</option>
+                <option value="MONTHLY">Monthly</option>
+            </select>
+        </div>
+
+        <div class="task-actions">
+            <button type="submit" class="liyz-button liyz-button-primary">
+                Save changes
+            </button>
+
+            <button
+                    type="button"
+                    class="liyz-button liyz-button-ghost"
+                    th:attr="hx-get=@{/tasks/{id}/card(id=${task.id})}"
+                    hx-target="closest article"
+                    hx-swap="outerHTML">
+                Cancel
+            </button>
+        </div>
+    </form>
 </article>
 
 </body>

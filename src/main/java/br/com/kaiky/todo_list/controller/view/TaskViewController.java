@@ -3,6 +3,7 @@ package br.com.kaiky.todo_list.controller.view;
 import br.com.kaiky.todo_list.dto.TaskRequestDTO;
 import br.com.kaiky.todo_list.dto.TaskResponseDTO;
 import br.com.kaiky.todo_list.dto.TaskStatusDTO;
+import br.com.kaiky.todo_list.dto.TaskUpdateDTO;
 import br.com.kaiky.todo_list.service.TaskService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -67,6 +68,38 @@ public class TaskViewController {
         return "task";
     }
 
+    @GetMapping("/{id}/card")
+    public String getTaskCard(
+            @PathVariable UUID id,
+            Model model
+    ) {
+        model.addAttribute("task", taskService.findTaskById(id));
+
+        return "fragments/task-item :: taskItem(task=${task})";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String editTask(
+            @PathVariable UUID id,
+            Model model
+    ) {
+        TaskResponseDTO task = taskService.findTaskById(id);
+
+        model.addAttribute("task", task);
+        model.addAttribute(
+                "taskUpdate",
+                new TaskUpdateDTO(
+                        task.title(),
+                        task.description(),
+                        task.dueAt(),
+                        task.notificationStatus() != null && !task.notificationStatus().name().equals("NONE"),
+                        task.recurrenceType()
+                )
+        );
+
+        return "fragments/task-item :: taskEditForm(task=${task}, taskUpdate=${taskUpdate})";
+    }
+
     @PostMapping
     public String createTask(
             @Valid
@@ -111,6 +144,38 @@ public class TaskViewController {
                 "task",
                 taskService.findTaskById(id)
         );
+
+        return "fragments/task-item :: taskItem(task=${task})";
+    }
+
+    @PatchMapping("/{id}/details")
+    public String updateTask(
+            @PathVariable UUID id,
+            @Valid @ModelAttribute("taskUpdate") TaskUpdateDTO dto,
+            BindingResult bindingResult,
+            Model model,
+            HttpServletResponse response
+    ) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("task", taskService.findTaskById(id));
+            model.addAttribute("errors", bindingResult.getAllErrors());
+            response.setHeader("HX-Retarget", "#task-edit-errors-" + id);
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "fragments/task-form-errors :: formErrors";
+        }
+
+        TaskResponseDTO updatedTask;
+        try {
+            updatedTask = taskService.updateTask(id, dto);
+        } catch (IllegalArgumentException exception) {
+            model.addAttribute("task", taskService.findTaskById(id));
+            model.addAttribute("errorMessage", exception.getMessage());
+            response.setHeader("HX-Retarget", "#task-edit-errors-" + id);
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "fragments/task-form-errors :: formErrors";
+        }
+
+        model.addAttribute("task", updatedTask);
 
         return "fragments/task-item :: taskItem(task=${task})";
     }

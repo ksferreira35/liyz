@@ -2,6 +2,77 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.0.0] - 2026-07-27
+
+### Features
+
+- Added Spring Security authentication with login and registration flows.
+- Added user-scoped task access so authenticated users can only access their own tasks.
+- Added HTMX + Thymeleaf web interface for task management.
+- Added task editing from the web UI.
+- Added due dates and reminder times for tasks.
+- Added recurring tasks with daily, weekly, and monthly recurrence.
+- Added Schedule page with filters for today, tomorrow, next 7 days, later, and tasks without dates.
+- Added Notifications page for upcoming, queued, sent, and failed task reminders.
+- Added Markdown rendering support for Liyz chat responses.
+- Added returned `conversationId` flow in the web chat.
+- Removed the temporary fixed development conversation fallback.
+
+### Notifications
+
+- Added RabbitMQ integration for asynchronous task notification delivery.
+- Added Resend integration for reminder emails.
+- Added notification scheduler for due reminders.
+- Added notification publisher and consumer flow.
+- Added retry and disable actions for task reminders.
+- Added email notification status tracking with pending, queued, sent, and failed states.
+
+### AI Improvements
+
+- Improved Liyz tool behavior for task creation, update, completion, deletion, search, reminders, and recurrence.
+- Added task operations by title when a clear unique match exists.
+- Improved AI task flow so newly created and updated tasks are reflected in the UI without manual refresh.
+- Improved prompts to avoid unsafe identity assumptions based only on the user's name.
+- Improved task description constraints to prevent AI-generated descriptions from exceeding application limits.
+- Improved language behavior so Liyz follows the user's latest message language.
+- Added current date and timezone context for reminder creation.
+- Added defensive AI fallback for malformed tool calls from OpenAI-compatible providers.
+
+### Frontend
+
+- Added minimalist dark UI inspired by a product dashboard style.
+- Added sidebar navigation for My Tasks, Schedule, and Notifications.
+- Added Bootstrap Icons for navigation and logout actions.
+- Added Liyz logo and favicon.
+- Added minimalist footer with product links and copyright.
+- Added interactive Liyz assistant panel with robot icon styling.
+- Added sort toggle for recent tasks.
+- Added responsive layout improvements for desktop and mobile.
+- Added dedicated visual states for pending, completed, recurring, and reminder-enabled tasks.
+
+### Database
+
+- Added Flyway migrations for task notification fields.
+- Added Flyway migration to expand task descriptions.
+- Added Flyway migration for task recurrence.
+
+### Tests
+
+- Added and updated unit tests for authenticated task access.
+- Added tests for task creation, updates, deletion, recurrence, notifications, chat history, Redis memory, and prompt injection protection.
+- Current test suite: 48 passing tests.
+
+### Infrastructure
+
+- Added RabbitMQ service to Docker Compose.
+- Added notification-related application properties.
+- Added async and scheduled processing support for notification workflows.
+
+### Fixes
+
+- Fixed HTMX task actions after AI-triggered task list refreshes.
+- Fixed login and register logo loading by allowing public access to static image assets.
+
 ## [v1.2.0] - 2026-07-17
 
 ### Features

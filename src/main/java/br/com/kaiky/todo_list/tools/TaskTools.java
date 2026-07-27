@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import br.com.kaiky.todo_list.dto.TaskRequestDTO;
 import br.com.kaiky.todo_list.dto.TaskResponseDTO;
 import br.com.kaiky.todo_list.dto.TaskStatusDTO;
+import br.com.kaiky.todo_list.dto.TaskUpdateDTO;
+import br.com.kaiky.todo_list.entity.RecurrenceType;
 import br.com.kaiky.todo_list.service.TaskService;
 
 @Component
@@ -108,6 +110,72 @@ public class TaskTools {
             LocalDateTime dueAt
     ){
         return taskService.createTask(new TaskRequestDTO(title, description, dueAt, true));
+    }
+
+    @Tool(
+            description = """
+                Creates a recurring task without an email reminder.
+                Use this when the user asks for a routine or says the task repeats
+                daily, weekly, or monthly, but does not ask for a reminder email.
+            """
+    )
+    public TaskResponseDTO createRecurringTask(
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "How often the task repeats: DAILY, WEEKLY, or MONTHLY.")
+            RecurrenceType recurrenceType
+    ){
+        return taskService.createTask(new TaskRequestDTO(title, description, null, false, recurrenceType));
+    }
+
+    @Tool(
+            description = """
+                Creates a recurring task with an email reminder.
+                Use this when the user asks for a repeated reminder, routine reminder,
+                or recurring notification such as "remind me every day at 8".
+                The reminder will be sent to the authenticated user's email.
+            """
+    )
+    public TaskResponseDTO createRecurringTaskWithReminder(
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "First reminder date and time in ISO local date-time format, for example 2026-07-25T20:30:00.")
+            LocalDateTime dueAt,
+            @ToolParam(description = "How often the task repeats: DAILY, WEEKLY, or MONTHLY.")
+            RecurrenceType recurrenceType
+    ){
+        return taskService.createTask(new TaskRequestDTO(title, description, dueAt, true, recurrenceType));
+    }
+
+    @Tool(
+            description = """
+                Updates a task using its UUID.
+                Use this when the user asks to edit title, description, reminder time,
+                notification setting, or repeat frequency of an existing task.
+            """
+    )
+    public TaskResponseDTO updateTaskDetails(
+            @ToolParam(description = "Task UUID provided by the user.")
+            UUID id,
+            @ToolParam(description = "Updated task title. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Updated task description. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "Updated reminder date and time, or null to remove reminder time.")
+            LocalDateTime dueAt,
+            @ToolParam(description = "true enables reminder email when dueAt is present; false disables reminder email.")
+            boolean notificationEnabled,
+            @ToolParam(description = "Repeat frequency: NONE, DAILY, WEEKLY, or MONTHLY.")
+            RecurrenceType recurrenceType
+    ){
+        return taskService.updateTask(
+                id,
+                new TaskUpdateDTO(title, description, dueAt, notificationEnabled, recurrenceType)
+        );
     }
 
     @Tool(

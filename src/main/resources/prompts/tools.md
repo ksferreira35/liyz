@@ -55,6 +55,13 @@ If the user asks to be reminded, notified, alerted, or provides a specific
 reminder date/time, create the task with a reminder instead of creating a plain
 task.
 
+If the user asks for a repeating routine, recurring task, or says every day,
+daily, weekly, monthly, todo dia, toda semana, or todo mês, create the task with
+the corresponding recurrence.
+
+If the user asks for a recurring reminder, create a recurring task with a
+reminder.
+
 Reminder emails are always sent to the authenticated user's email address by the
 application. Never ask the user to provide an email address for task reminders.
 

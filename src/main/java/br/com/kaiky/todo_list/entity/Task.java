@@ -33,6 +33,9 @@ public class Task {
     private LocalDateTime notifiedAt;
     @Column(name = "last_notification_error", length = 1000)
     private String lastNotificationError;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recurrence_type", nullable = false)
+    private RecurrenceType recurrenceType = RecurrenceType.NONE;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser user;
@@ -115,6 +118,12 @@ public class Task {
     }
     public void setLastNotificationError(String lastNotificationError) {
         this.lastNotificationError = lastNotificationError;
+    }
+    public RecurrenceType getRecurrenceType() {
+        return recurrenceType;
+    }
+    public void setRecurrenceType(RecurrenceType recurrenceType) {
+        this.recurrenceType = recurrenceType;
     }
     public AppUser getUser() {
         return user;

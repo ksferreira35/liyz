@@ -10,10 +10,10 @@
     </parent>
     <groupId>br.com.kaiky</groupId>
     <artifactId>todo-list</artifactId>
-    <version>1.2.0</version>
+    <version>2.0.0</version>
 
-    <name>Todo List API</name>
-    <description>REST API for task management built with Spring Boot.</description>
+    <name>Liyz Todo</name>
+    <description>AI-powered task management app built with Spring Boot, Spring AI, HTMX, and Thymeleaf.</description>
     <url>https://github.com/ksferreira35/todo-list</url>
 
     <licenses>

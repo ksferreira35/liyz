@@ -18,6 +18,7 @@ public class SecurityConfig {
                                 "/register",
                                 "/auth/register",
                                 "/css/**",
+                                "/img/**",
                                 "/js/**",
                                 "/images/**",
                                 "/swagger-ui/**",

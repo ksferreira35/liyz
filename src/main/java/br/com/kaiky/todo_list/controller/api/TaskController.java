@@ -21,10 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 import br.com.kaiky.todo_list.dto.TaskRequestDTO;
 import br.com.kaiky.todo_list.dto.TaskResponseDTO;
 import br.com.kaiky.todo_list.dto.TaskStatusDTO;
+import br.com.kaiky.todo_list.dto.TaskUpdateDTO;
 import br.com.kaiky.todo_list.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 
 
 @RestController
@@ -66,7 +68,7 @@ public class TaskController {
     @Operation(summary = "Create a task")
     @PostMapping
     public ResponseEntity<TaskResponseDTO> createTask(
-        @RequestBody TaskRequestDTO dto) {
+        @Valid @RequestBody TaskRequestDTO dto) {
 
         return ResponseEntity
         .status(HttpStatus.CREATED)
@@ -82,6 +84,15 @@ public class TaskController {
         taskService.updateTaskStatus(id, statusDTO);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Update a task")
+    @PatchMapping("/{id}/details")
+    public ResponseEntity<TaskResponseDTO> updateTask(
+            @PathVariable UUID id,
+            @Valid @RequestBody TaskUpdateDTO dto
+    ) {
+        return ResponseEntity.ok(taskService.updateTask(id, dto));
     }
 
     @Operation(summary = "Delete a task by ID")
