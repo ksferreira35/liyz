@@ -1,0 +1,19 @@
+<div
+        th:fragment="formErrors"
+        class="liyz-alert liyz-alert-danger">
+
+    <ul>
+        <li
+                th:each="error : ${errors}"
+                th:text="${error.defaultMessage}">
+            Validation error
+        </li>
+
+        <li
+                th:if="${errorMessage != null}"
+                th:text="${errorMessage}">
+            Validation error
+        </li>
+    </ul>
+
+</div>

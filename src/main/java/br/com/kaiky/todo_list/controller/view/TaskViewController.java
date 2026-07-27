@@ -1,0 +1,209 @@
+package br.com.kaiky.todo_list.controller.view;
+
+import br.com.kaiky.todo_list.dto.TaskRequestDTO;
+import br.com.kaiky.todo_list.dto.TaskResponseDTO;
+import br.com.kaiky.todo_list.dto.TaskStatusDTO;
+import br.com.kaiky.todo_list.dto.TaskUpdateDTO;
+import br.com.kaiky.todo_list.service.TaskService;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@Controller
+@RequestMapping("/tasks")
+public class TaskViewController {
+
+    private final TaskService taskService;
+
+    public TaskViewController(TaskService taskService) {
+        this.taskService = taskService;
+    }
+
+    @GetMapping
+    public String tasksPage(
+            Pageable pageable,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            Model model
+    ) {
+        addTaskListModelAttributes(model, pageable, sortDirection);
+
+        model.addAttribute(
+                "taskRequest",
+                new TaskRequestDTO("","")
+        );
+
+        return "tasks";
+    }
+
+    @GetMapping("/fragments/list")
+    public String taskListFragment(
+            Pageable pageable,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            Model model
+    ) {
+        addTaskListModelAttributes(model, pageable, sortDirection);
+
+        return "tasks :: taskListSection";
+    }
+
+    @GetMapping("/{id}")
+    public String getTask(
+            @PathVariable UUID id,
+            Model model
+    ) {
+        model.addAttribute(
+                "task",
+                taskService.findTaskById(id)
+        );
+
+        return "task";
+    }
+
+    @GetMapping("/{id}/card")
+    public String getTaskCard(
+            @PathVariable UUID id,
+            Model model
+    ) {
+        model.addAttribute("task", taskService.findTaskById(id));
+
+        return "fragments/task-item :: taskItem(task=${task})";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String editTask(
+            @PathVariable UUID id,
+            Model model
+    ) {
+        TaskResponseDTO task = taskService.findTaskById(id);
+
+        model.addAttribute("task", task);
+        model.addAttribute(
+                "taskUpdate",
+                new TaskUpdateDTO(
+                        task.title(),
+                        task.description(),
+                        task.dueAt(),
+                        task.notificationStatus() != null && !task.notificationStatus().name().equals("NONE"),
+                        task.recurrenceType()
+                )
+        );
+
+        return "fragments/task-item :: taskEditForm(task=${task}, taskUpdate=${taskUpdate})";
+    }
+
+    @PostMapping
+    public String createTask(
+            @Valid
+            @ModelAttribute("taskRequest")
+            TaskRequestDTO dto,
+
+            BindingResult bindingResult,
+            Model model,
+            HttpServletResponse response
+    ) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("errors", bindingResult.getAllErrors());
+            response.setHeader("HX-Retarget", "#task-form-errors");
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "fragments/task-form-errors :: formErrors";
+        }
+
+        TaskResponseDTO createdTask;
+        try {
+            createdTask = taskService.createTask(dto);
+        } catch (IllegalArgumentException exception) {
+            model.addAttribute("errorMessage", exception.getMessage());
+            response.setHeader("HX-Retarget", "#task-form-errors");
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "fragments/task-form-errors :: formErrors";
+        }
+
+        model.addAttribute("task", createdTask);
+
+        return "fragments/task-item :: taskItem(task=${task})";
+    }
+
+    @PatchMapping("/{id}")
+    public String updateTaskStatus(
+            @PathVariable UUID id,
+            @ModelAttribute TaskStatusDTO statusDTO,
+            Model model
+    ) {
+        taskService.updateTaskStatus(id, statusDTO);
+
+        model.addAttribute(
+                "task",
+                taskService.findTaskById(id)
+        );
+
+        return "fragments/task-item :: taskItem(task=${task})";
+    }
+
+    @PatchMapping("/{id}/details")
+    public String updateTask(
+            @PathVariable UUID id,
+            @Valid @ModelAttribute("taskUpdate") TaskUpdateDTO dto,
+            BindingResult bindingResult,
+            Model model,
+            HttpServletResponse response
+    ) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("task", taskService.findTaskById(id));
+            model.addAttribute("errors", bindingResult.getAllErrors());
+            response.setHeader("HX-Retarget", "#task-edit-errors-" + id);
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "fragments/task-form-errors :: formErrors";
+        }
+
+        TaskResponseDTO updatedTask;
+        try {
+            updatedTask = taskService.updateTask(id, dto);
+        } catch (IllegalArgumentException exception) {
+            model.addAttribute("task", taskService.findTaskById(id));
+            model.addAttribute("errorMessage", exception.getMessage());
+            response.setHeader("HX-Retarget", "#task-edit-errors-" + id);
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "fragments/task-form-errors :: formErrors";
+        }
+
+        model.addAttribute("task", updatedTask);
+
+        return "fragments/task-item :: taskItem(task=${task})";
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTask(
+            @PathVariable UUID id
+    ) {
+        taskService.deleteTaskById(id);
+        return ResponseEntity.ok().build();
+    }
+
+    private void addTaskListModelAttributes(
+            Model model,
+            Pageable pageable,
+            String sortDirection
+    ) {
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(direction, "createdAt")
+        );
+
+        model.addAttribute("tasks", taskService.getAllTasks(sortedPageable));
+        model.addAttribute("sortDirection", direction.name().toLowerCase());
+        model.addAttribute("nextSortDirection", direction.isAscending() ? "desc" : "asc");
+    }
+}

@@ -1,13 +1,13 @@
 package br.com.kaiky.todo_list;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.assertj.core.api.Assertions.assertThat;
+
 class TodoListApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void shouldExposeApplicationEntryPoint() {
+        assertThat(TodoListApplication.class).isNotNull();
+    }
 }

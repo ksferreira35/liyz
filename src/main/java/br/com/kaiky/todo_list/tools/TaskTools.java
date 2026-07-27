@@ -1,15 +1,19 @@
 package br.com.kaiky.todo_list.tools;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import br.com.kaiky.todo_list.dto.TaskRequestDTO;
 import br.com.kaiky.todo_list.dto.TaskResponseDTO;
 import br.com.kaiky.todo_list.dto.TaskStatusDTO;
+import br.com.kaiky.todo_list.dto.TaskUpdateDTO;
+import br.com.kaiky.todo_list.entity.RecurrenceType;
 import br.com.kaiky.todo_list.service.TaskService;
 
 @Component
@@ -27,8 +31,26 @@ public class TaskTools {
                 about a specific task and provides its ID.
             """
     )
-    public TaskResponseDTO findTaskById(UUID id){
+    public TaskResponseDTO findTaskById(
+            @ToolParam(description = "Task UUID provided by the user.")
+            UUID id
+    ){
         return taskService.findTaskById(id);
+    }
+
+    @Tool(
+            description = """
+                Finds tasks by title or a partial title.
+                Use this when the user refers to a task by name instead of UUID,
+                for example "Assistir TV", "review dashboard", or "minha task de almoço".
+                If more than one task is returned, ask the user to clarify which one.
+            """
+    )
+    public List<TaskResponseDTO> findTasksByTitle(
+            @ToolParam(description = "Task title or partial title mentioned by the user.")
+            String title
+    ){
+        return taskService.findTasksByTitle(title);
     }
 
     @Tool(
@@ -39,7 +61,9 @@ public class TaskTools {
         """
     )
     public List<TaskResponseDTO> getAllTasks(
+            @ToolParam(description = "Zero-based page number. Use 0 if the user does not specify pagination.")
             int page,
+            @ToolParam(description = "Page size. Use 20 if the user does not specify pagination.")
             int size
     ) {
         return taskService
@@ -59,8 +83,99 @@ public class TaskTools {
                 calling this tool and include them in the same description.
             """
     )
-    public TaskResponseDTO createTask(TaskRequestDTO dto){
-        return taskService.createTask(dto);
+    public TaskResponseDTO createTask(
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
+            String description
+    ){
+        return taskService.createTask(new TaskRequestDTO(title, description));
+    }
+
+    @Tool(
+            description = """
+                Creates a new task with an email reminder.
+                Use this when the user asks to be reminded, notified, alerted,
+                or gives a date/time for the task reminder.
+                The reminder will be sent to the authenticated user's email.
+                Never ask the user for their email address.
+            """
+    )
+    public TaskResponseDTO createTaskWithReminder(
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "Reminder date and time in ISO local date-time format, for example 2026-07-25T20:30:00.")
+            LocalDateTime dueAt
+    ){
+        return taskService.createTask(new TaskRequestDTO(title, description, dueAt, true));
+    }
+
+    @Tool(
+            description = """
+                Creates a recurring task without an email reminder.
+                Use this when the user asks for a routine or says the task repeats
+                daily, weekly, or monthly, but does not ask for a reminder email.
+            """
+    )
+    public TaskResponseDTO createRecurringTask(
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "How often the task repeats: DAILY, WEEKLY, or MONTHLY.")
+            RecurrenceType recurrenceType
+    ){
+        return taskService.createTask(new TaskRequestDTO(title, description, null, false, recurrenceType));
+    }
+
+    @Tool(
+            description = """
+                Creates a recurring task with an email reminder.
+                Use this when the user asks for a repeated reminder, routine reminder,
+                or recurring notification such as "remind me every day at 8".
+                The reminder will be sent to the authenticated user's email.
+            """
+    )
+    public TaskResponseDTO createRecurringTaskWithReminder(
+            @ToolParam(description = "Task title exactly as requested by the user. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Task description. Use an empty string when the user does not provide one. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "First reminder date and time in ISO local date-time format, for example 2026-07-25T20:30:00.")
+            LocalDateTime dueAt,
+            @ToolParam(description = "How often the task repeats: DAILY, WEEKLY, or MONTHLY.")
+            RecurrenceType recurrenceType
+    ){
+        return taskService.createTask(new TaskRequestDTO(title, description, dueAt, true, recurrenceType));
+    }
+
+    @Tool(
+            description = """
+                Updates a task using its UUID.
+                Use this when the user asks to edit title, description, reminder time,
+                notification setting, or repeat frequency of an existing task.
+            """
+    )
+    public TaskResponseDTO updateTaskDetails(
+            @ToolParam(description = "Task UUID provided by the user.")
+            UUID id,
+            @ToolParam(description = "Updated task title. Maximum 120 characters.")
+            String title,
+            @ToolParam(description = "Updated task description. Maximum 2000 characters.")
+            String description,
+            @ToolParam(description = "Updated reminder date and time, or null to remove reminder time.")
+            LocalDateTime dueAt,
+            @ToolParam(description = "true enables reminder email when dueAt is present; false disables reminder email.")
+            boolean notificationEnabled,
+            @ToolParam(description = "Repeat frequency: NONE, DAILY, WEEKLY, or MONTHLY.")
+            RecurrenceType recurrenceType
+    ){
+        return taskService.updateTask(
+                id,
+                new TaskUpdateDTO(title, description, dueAt, notificationEnabled, recurrenceType)
+        );
     }
 
     @Tool(
@@ -70,14 +185,47 @@ public class TaskTools {
                 And completed=false to mark the task is pending.
             """
     )
-    public String updateTaskStatus(
+    public TaskResponseDTO updateTaskStatus(
+            @ToolParam(description = "Task UUID provided by the user.")
             UUID id,
+            @ToolParam(description = "true marks as completed; false marks as pending.")
             boolean completed
     ){
-        taskService.updateTaskStatus(
+        return taskService.updateTaskStatus(
                 id,
                 new TaskStatusDTO(completed));
-        return "Task with id: "+ id + " has been updated status completed.";
+    }
+
+    @Tool(
+            description = """
+                Marks exactly one task as completed using its title or partial title.
+                Use this when the user says the task is completed, done, ready, finished,
+                marked, closed, pronta, concluída, finalizada, feita, or terminada,
+                and identifies the task by name instead of UUID.
+                If multiple tasks match, ask the user to clarify instead of guessing.
+            """
+    )
+    public TaskResponseDTO markTaskAsCompletedByTitle(
+            @ToolParam(description = "Task title or partial title mentioned by the user.")
+            String title
+    ){
+        return taskService.updateTaskStatusByTitle(title, new TaskStatusDTO(true));
+    }
+
+    @Tool(
+            description = """
+                Marks exactly one task as pending using its title or partial title.
+                Use this when the user says the task should be pending, not done,
+                reopened, open again, pendente, não concluída, or reaberta,
+                and identifies the task by name instead of UUID.
+                If multiple tasks match, ask the user to clarify instead of guessing.
+            """
+    )
+    public TaskResponseDTO markTaskAsPendingByTitle(
+            @ToolParam(description = "Task title or partial title mentioned by the user.")
+            String title
+    ){
+        return taskService.updateTaskStatusByTitle(title, new TaskStatusDTO(false));
     }
 
     @Tool(
@@ -88,10 +236,30 @@ public class TaskTools {
                 Do not execute it for ambiguous requests.
             """
     )
-    public String deleteTask(UUID id){
+    public TaskResponseDTO deleteTask(
+            @ToolParam(description = "Task UUID provided by the user.")
+            UUID id
+    ){
+        TaskResponseDTO response = taskService.findTaskById(id);
         taskService.deleteTaskById(id);
 
-        return "Task with id: "+ id + " has been deleted.";
+        return response;
+    }
+
+    @Tool(
+            description = """
+                Permanently deletes exactly one task using its title or partial title.
+                Use this only when the user clearly asks to delete, remove, erase,
+                excluir, deletar, apagar, or remover a task and identifies it by name
+                instead of UUID.
+                If multiple tasks match, ask the user to clarify instead of guessing.
+            """
+    )
+    public TaskResponseDTO deleteTaskByTitle(
+            @ToolParam(description = "Task title or partial title mentioned by the user.")
+            String title
+    ){
+        return taskService.deleteTaskByTitle(title);
     }
 
 }

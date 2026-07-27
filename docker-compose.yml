@@ -15,8 +15,19 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: todo-list-redis
     ports:
       - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: todo-list-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
 
 
   pgadmin:
@@ -33,6 +44,7 @@ services:
     depends_on:
       - database
       - redis
+      - rabbitmq
     ports:
       - 8080:8080
     environment:
@@ -43,7 +55,12 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       GROQ_API_KEY: ${GROQ_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
 
 volumes:
   postgres_data:
