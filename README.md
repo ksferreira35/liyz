@@ -1,4 +1,4 @@
-# Liyz Todo
+# Liyz
 
 A modern AI-powered task management application built with **Spring Boot**, **Spring AI**, **HTMX**, and **Thymeleaf**.
 
@@ -12,7 +12,7 @@ The project includes **Liyz**, an AI assistant capable of creating, organizing, 
 
 ### Web App
 
-![Liyz-Todo](/src/main/resources/docs/Todo-gallery.png)
+![Liyz](/src/main/resources/docs/Todo-gallery.png)
 
 ### Swagger
 
@@ -25,7 +25,7 @@ The project includes **Liyz**, an AI assistant capable of creating, organizing, 
 - AI-powered task management with Spring AI and tool calling
 - HTMX + Thymeleaf web interface
 - Spring Security authentication
-- User-scoped tasks and chat history
+- User-scoped tasks (chat history isolation is a security priority; see roadmap)
 - Conversational memory using Redis
 - Persistent AI chat history using PostgreSQL
 - CRUD operations for tasks through REST and web UI
@@ -198,7 +198,7 @@ mvn spring-boot:run
 - [x] Docker Compose
 - [x] Unit Tests
 - [x] Authentication & Authorization (Spring Security)
-- [x] User-scoped tasks and chat conversations
+- [x] User-scoped tasks
 - [x] Due Dates, Reminders & Notifications
 - [x] RabbitMQ notification queue
 - [x] Resend email notifications
@@ -206,6 +206,21 @@ mvn spring-boot:run
 - [x] Recurring Tasks
 - [x] Schedule View
 - [x] Frontend conversation flow using returned `conversationId`
+
+### Highest Priority: Chat History and Memory Isolation
+
+Chat conversations currently have no user owner, and the backend accepts a
+client-provided `conversationId` without checking ownership before loading Redis
+memory. The frontend also reuses a single `localStorage` conversation key across
+accounts. Chat history isolation is not yet implemented and must be addressed
+before treating the chat as safe for multiple users.
+
+- [ ] Associate each `ChatConversation` with its authenticated owner through `user_id`.
+- [ ] Create conversations for the authenticated user and validate ownership before any Redis lookup, AI call, or history read/write; reject conversations belonging to another user.
+- [ ] Scope PostgreSQL history queries and Redis memory keys by user and conversation.
+- [ ] Isolate the frontend conversation ID per account and clear it on logout.
+- [ ] Define a safe migration strategy for existing conversations and Redis memory without assigning unowned history to arbitrary users.
+- [ ] Add regression tests using two users, including a foreign `conversationId` and switching accounts in the same browser.
 
 ### Next Features
 

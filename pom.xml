@@ -12,7 +12,7 @@
     <artifactId>todo-list</artifactId>
     <version>2.0.0</version>
 
-    <name>Liyz Todo</name>
+    <name>Liyz</name>
     <description>AI-powered task management app built with Spring Boot, Spring AI, HTMX, and Thymeleaf.</description>
     <url>https://github.com/ksferreira35/todo-list</url>
 

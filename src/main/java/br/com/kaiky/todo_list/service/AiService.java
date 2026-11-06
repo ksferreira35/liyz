@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -17,6 +18,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
 
 import br.com.kaiky.todo_list.dto.AiChatRequestDTO;
@@ -48,6 +50,7 @@ public class AiService {
 
     public AiService(
             ChatClient.Builder chatClientBuilder,
+            OpenAiChatModel chatModel,
             TaskTools taskTools,
             PromptService promptService,
             PromptInjectionAdvisor promptInjectionAdvisor,
@@ -60,6 +63,9 @@ public class AiService {
                 .build();
 
         this.chatClient = chatClientBuilder
+                // Groq rejects reasoning_content when tool messages are sent back.
+                .defaultOptions(chatModel.getOptions().mutate()
+                        .extraBody(Map.of("include_reasoning", false)))
                 .defaultAdvisors(
                         promptInjectionAdvisor,
                         MessageChatMemoryAdvisor.builder(chatMemory).build()

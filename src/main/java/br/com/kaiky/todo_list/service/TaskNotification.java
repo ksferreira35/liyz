@@ -27,7 +27,7 @@ public class TaskNotification {
 
     public void sendTaskNotification(TaskNotificationEmail email) {
         ResendEmailRequest request = new ResendEmailRequest(
-                "Liyz Todo <" + fromEmail + ">",
+                "Liyz <" + fromEmail + ">",
                 List.of(email.targetEmail()),
                 "Task reminder: " + email.taskTitle(),
                 buildHtml(email),
